@@ -23,7 +23,7 @@ class OTP extends Model {
         'expires_at'
     ];
 
-    protected function casts () {
+    protected function casts () : array {
         return [
             'expires_at' => 'datetime',
             'type'       => Type::class,

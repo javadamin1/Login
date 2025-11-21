@@ -72,6 +72,13 @@ return [
             'days'                 => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
         ],
+        'sms'   => [
+            'driver'               => 'daily',
+            'path'                 => storage_path('logs/sms.log'),
+            'level'                => env('LOG_LEVEL', 'debug'),
+            'days'                 => env('LOG_DAILY_DAYS', 3),
+            'replace_placeholders' => true,
+        ],
         'login' => [
             'driver'               => 'login',
             'path'                 => storage_path('logs/login.log'),
