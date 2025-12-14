@@ -6,9 +6,12 @@ use App\Enums\OTP\Type;
 use App\Enums\User\Status;
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\LoginRequest;
 use App\Models\OTP;
 use App\Models\User;
+use App\Services\OtpService;
 use app\Supports\Sanitizer;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -48,126 +51,74 @@ class AuthController extends Controller {
      * @throws \Illuminate\Validation\ValidationException
      * @throws \Random\RandomException
      */
-    public function login (Request $request) : \Illuminate\Http\JsonResponse {
+    public function login (LoginRequest $request) : JsonResponse {
 
-        $validator = Validator::make($request->all(), [
-            'mobile' => 'required|max:15'
-        ]);
+        $mobile = $request->input('mobile');
 
-        if ( $validator->fails() ) {
-            return self::validationResponse($validator);
-        }
-
-        $mobile = $validator->validated()['mobile'];
-        $mobile = Helper::normalizeMobile($mobile);
-        if ( !$mobile ) {
-            return self::warning([
-                'message' => 'فیلد ها رو به صورت صحیح وارد فرمایید',
-                'errors'  => [
-                    'mobile' => 'شماره همراه صحیح نمی باشد'
-                ]
-            ], 422);
-        }
-        $number = Helper::generateCode(4);
-        $user   = User::whereMobile($mobile)->first();
+        /** @var User $user */
+        $user = User::whereMobile($mobile)->first();
         if ( !$user ) {
-            try {
-                DB::beginTransaction();
+            DB::beginTransaction();
 
-                $createUser = User::create([
+            try {
+                $user = User::create([
                     'mobile' => $mobile,
                 ]);
-                $createUser->otp()->create([
-                    'code'       => $number,
-                    'type'       => Type::Login->value,
-                    'expires_at' => now()->addMinutes(3),
-                ]);
+
+                $otp = app(OtpService::class)->generate($user->id, Type::Login, 180);
 
                 DB::commit();
 
                 return self::success([
-                    'message' => 'کد ارسال شده رو وارد فرمایید ' . $number,
+                    'message' => __('auth.enter_code', ['code' => $otp->code]),
                     'data'    => [
-                        'page' => 'validation_code'
+                        'nextPage' => 'validationCode'
                     ],
                 ]);
 
             } catch ( \Throwable $e ) {
                 DB::rollBack();
-                Log::channel('login')->info('Create user get failed', [
+                logException($e, 'Create user failed', [
                     'mobile' => $mobile,
-                    'msg'    => $e->getMessage(),
-                    'line'   => $e->getLine(),
-                ]);
+                ], 'login');
 
-                return self::error('لطفا دوباره تلاش فرمایید');
+                return self::error(__('alert.try_again'));
             }
+        }
 
-        } elseif ( !$user->last_name ) {
-            // if not verify mobile
-            if ( !$user->hasVerifiedMobile() ) {
-                /**
-                 * @var OTP $otp
-                 */
-                $otp = $user->otp;
-                if ( !$otp ) {
-                    $otp = $user->otp()->create([
-                        'code'       => $number,
-                        'type'       => Type::Login->value,
-                        'expires_at' => now()->addMinutes(3),
-                    ]);
-                    if ( $otp ) {
-                        return self::success([
-                            'message' => 'کد ارسال شده رو وارد فرمایید ' . $number,
-                            'data'    => [
-                                'page' => 'validation_code'
-                            ],
-                        ]);
-                    }
+        if ( !$user->isCompleteInfo() || !$user->hasVerifiedMobile() ) {
 
-                    return self::error('لطفا دوباره تلاش فرمایید');
-                }
 
-                if ( !$otp->isExpired(Type::Login) ) {
-                    $secondsLeft = now()->diffInSeconds($otp->expires_at);
+            $otp = $user->findOtp(Type::Login);
 
-                    return self::warning([
-                        'message' => 'منتظر کد باشیدلطفا ',
-                        'errors'  => [
-                            'secondsLeft' => (int) abs($secondsLeft),
-                        ]
-                    ]);
-                }
-                $otp = $user->otp()->update([
-                    'code'       => $number,
-                    'type'       => Type::Login->value,
-                    'expires_at' => now()->addMinutes(3),
-                ]);
+            if ( !$otp || $otp->isExpired(Type::Login) ) {
+                $otp = app(OtpService::class)->generate($user->id, Type::Login, 180);
+
                 if ( $otp ) {
                     return self::success([
-                        'message' => 'کد ارسال شده رو وارد فرمایید ' . $number,
+                        'message' => __('auth.enter_code', ['code' => $otp->code]),
                         'data'    => [
-                            'page' => 'validation_code'
+                            'page' => 'validationCode'
                         ],
                     ]);
                 }
 
-                return self::error('لطفا دوباره تلاش فرمایید');
+                return self::error(__('alert.try_again'));
             }
 
-            return self::success([
-                'message' => 'لطفا اطلاعات را کامل فرمایید',
-                'data'    => [
-                    'page' => 'register'
+            $secondsLeft = now()->diffInSeconds($otp->expires_at);
+
+            return self::warning([
+                'message' => __('otp.wait_code'),
+                'errors'  => [
+                    'secondsLeft' => abs((int) $secondsLeft),
                 ],
             ]);
         }
 
         return self::success([
-            'message' => 'با موفقیت وارد شدید',
-            'data'    => [
-                'token' => $user->createToken('auth_token')->plainTextToken,
-                'page'  => 'home'
+            'data' => [
+                'nextPage' => 'password'
             ]
         ]);
 

@@ -1,5 +1,7 @@
 <?php
 
+use Psr\Log\LoggerInterface;
+
 function formatJsonForPhpDoc ($data, $statusCode) : string {
     if ( is_string($data) ) {
         $data = json_decode($data, true);
@@ -40,4 +42,23 @@ function formatJsonParamsForPhpDoc (array $data, string $method = 'post') : stri
     $content = implode("\n", $commentedLines);
 
     return "/**\n{$content}\n */";
+}
+
+/**
+ * Log exception in a clean way
+ *
+ * @param Throwable   $e
+ * @param string|null $message
+ * @param array       $extraData
+ * @param string      $chanel
+ * @param string      $level
+ */
+function logException (Throwable $e, ?string $message = null, $extraData = [], string $chanel = 'daily', string $level = 'error') : void {
+    $data = array_merge([
+        'message' => $e->getMessage(),
+        'file'    => $e->getFile(),
+        'line'    => $e->getLine(),
+    ], $extraData);
+
+    app(LoggerInterface::class)->channel($chanel)->{$level}($message ?? 'Exception caught', $data);
 }

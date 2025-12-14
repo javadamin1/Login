@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-
+use App\Enums\OTP\Type;
 use App\Enums\User\Status;
+use App\Services\OtpService;
 use Hekmatinasser\Verta\Verta;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -58,7 +59,6 @@ class User extends Authenticatable {
 
     //======================================================== Relation Part ========================================
 
-
     public function otp () : HasOne {
         return $this->hasOne(OTP::class);
     }
@@ -66,6 +66,24 @@ class User extends Authenticatable {
     //======================================================== Function Part ========================================
     public function hasVerifiedMobile () : bool {
         return !is_null($this->mobile_verified_at);
+    }
+
+    /**
+     * Check user info is done
+     * @return bool
+     */
+    public function isCompleteInfo () : bool {
+        return  !empty($this->last_name) && !empty($this->national_id) &&  !empty($this->password);
+    }
+
+    /**
+     *  Find otp Info
+     * @param \App\Enums\OTP\Type $type
+     *
+     * @return \App\Models\OTP
+     */
+    public function findOtp (Type $type) {
+       return app(OtpService::class)->find($this->id, $type);
     }
 
 
