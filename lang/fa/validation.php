@@ -198,6 +198,7 @@ return [
     |
     */
 
-    'attributes' => require __DIR__ . '/validation-attributes.php',
+    'attributes'    => require __DIR__ . '/validation-attributes.php',
+    'invalid_field' => 'فیلدها را به‌صورت صحیح وارد فرمایید'
 
 ];

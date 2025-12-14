@@ -1,51 +1,85 @@
 FROM php:8.2-apache
 
-ENV TZ="Asia/Tehran"
+# --------------------------------------------------
+# Environment
+# --------------------------------------------------
+ENV TZ=Asia/Tehran
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Copy virtual host into container
+# --------------------------------------------------
+# Apache config
+# --------------------------------------------------
 COPY 000-default.conf /etc/apache2/sites-available/000-default.conf
+RUN a2enmod rewrite headers
 
-# Enable rewrite mode
-RUN a2enmod rewrite
+# --------------------------------------------------
+# System dependencies
+# --------------------------------------------------
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    unzip \
+    zip \
+    nano \
+    wget \
+    libzip-dev \
+    libicu-dev \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libonig-dev \
+    libxml2-dev \
+    libssl-dev \
+    pkg-config \
+    --no-install-recommends
 
-USER root
-# Install necessary packages
+# --------------------------------------------------
+# PHP extensions
+# --------------------------------------------------
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install \
+        pdo \
+        pdo_mysql \
+        zip \
+        intl \
+        gd \
+        mbstring \
+        exif \
+        pcntl \
+        bcmath \
+        opcache
 
-RUN apt-get -o Acquire::Check-Valid-Until=false update \
-   	&& apt-get install  \
-                    libicu-dev \
-                    libzip-dev \
-                    wget \
-                    nano \
-                    zip\
-                    unzip \
-                     -y --no-install-recommends
+# Install Redis extension
+RUN pecl install redis
 
-# Install PHP Extensions
-RUN docker-php-ext-install zip pdo_mysql pdo
-RUN docker-php-ext-install mysqli && docker-php-ext-enable mysqli
+# Enable redis extension
+RUN docker-php-ext-enable redis
 
-#RUN pecl install -o -f xdebug \
-#    && docker-php-ext-enable xdebug
+# --------------------------------------------------
+# Composer
+# --------------------------------------------------
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 
-# Copy composer installable
-#COPY ./install-composer.sh ./
-COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
+# --------------------------------------------------
+# PHP.ini Copy PHP configuration
+# --------------------------------------------------
 
-# Copy php.ini
+COPY php.ini /usr/local/etc/php/php.ini
 
-# Cleanup packages and install composer
-RUN apt-get purge -y g++ \
+
+# --------------------------------------------------
+# Cleanup
+# --------------------------------------------------
+RUN apt-get purge -y pkg-config \
     && apt-get autoremove -y \
-    && rm -r /var/lib/apt/lists/* \
-    && rm -rf /tmp/* \
+    && rm -rf /var/lib/apt/lists/* /tmp/*
 
-
-# Change the current working directory
+# --------------------------------------------------
+# Workdir & permissions
+# --------------------------------------------------
 WORKDIR /var/www/html
 
-# Change the owner of the container document root
-RUN chown -R www-data:www-data /var/www
-
-# Start Apache in foreground
+# --------------------------------------------------
+# Run Apache
+# --------------------------------------------------
 CMD ["apache2-foreground"]

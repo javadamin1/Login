@@ -14,6 +14,11 @@ class AppServiceProvider extends ServiceProvider {
      */
     public function register () : void {
         $this->app->bind(OtpRepositoryInterface::class, function ($app) {
+
+            if ( !class_exists(Redis::class) ) {
+                return new DatabaseOtpRepository();
+            }
+
             try {
                 Redis::connection()->ping();
 

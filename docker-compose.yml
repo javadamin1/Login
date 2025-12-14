@@ -1,7 +1,7 @@
 name: javad
 services:
   app:
-    container_name: javadApp
+    container_name: app
     build: ./docker
     #user: "1000:1000"
     ports:
@@ -16,7 +16,7 @@ services:
       - phpmyadmin
   db:
     image: mysql:8.2
-    container_name: javadMySql
+    container_name: db
     command: --default-authentication-plugin=mysql_native_password
     restart: always
     ports:
@@ -30,7 +30,7 @@ services:
     networks:
       - javad-net
   phpmyadmin:
-    container_name: javadAdmin
+    container_name: admin
     image: phpmyadmin:latest
     restart: always
     depends_on:
@@ -44,6 +44,26 @@ services:
       UPLOAD_LIMIT: 3000M
     networks:
       - javad-net
+  redis:
+    image: redis:8.2.2
+    container_name: redis
+    command: >
+      redis-server
+        --requirepass "${REDIS_PASSWORD}"
+        --appendonly yes
+        --appendfilename "appendonly.aof"
+        --save "60 1"
+        --maxmemory 256mb
+        --maxmemory-policy allkeys-lru
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./storage/redis:/data
+    networks:
+      - javad-net
+
 networks:
   javad-net:
     external: false
