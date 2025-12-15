@@ -20,37 +20,87 @@ use Illuminate\Support\Facades\Validator;
 
 
 class AuthController extends Controller {
-
     /**
-     * Login
+     * @OA\Post(
+     *     path="/api/auth/login",
+     *     operationId="authLogin",
+     *     tags={"Authentication"},
+     *     summary="Login or register user via mobile number",
+     *     description="Logs in a user using mobile number. If user does not exist, it will be created and an OTP code will be sent.",
      *
-     * @group    auth
-     * @response 422  {
-     *        "success": false,
-     *        "statusType": "error",
-     *        "title": "خطا",
-     *        "message": "Validation failed.",
-     *        "errors": {
-     *            "mobile": [
-     *                "فیلد تلفن همراه الزامی است."
-     *            ]
-     *        },
-     *        "notify": true
-     *    }
-     * @response 200  {
-     *        "success": true,
-     *        "statusType": "success",
-     *        "title": "موفق",
-     *        "message": "کد ارسال شده رو وارد فرمایید 8159",
-     *        "data": {
-     *            "page": "validation_code"
-     *        },
-     *        "notify": true
-     *    }
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"mobile"},
+     *             @OA\Property(
+     *                 property="mobile",
+     *                 type="string",
+     *                 example="09123456789",
+     *                 description="User mobile number"
+     *             )
+     *         )
+     *     ),
      *
-     * @throws \Illuminate\Validation\ValidationException
-     * @throws \Random\RandomException
+     *     @OA\Response(
+     *         response=200,
+     *         description="Successful login step",
+     *         @OA\JsonContent(
+     *             oneOf={
+     *                 @OA\Schema(
+     *                     @OA\Property(property="success", type="boolean", example=true),
+     *                     @OA\Property(property="message", type="string", example="Verification code sent"),
+     *                     @OA\Property(
+     *                         property="data",
+     *                         type="object",
+     *                         @OA\Property(property="nextPage", type="string", example="validationCode")
+     *                     )
+     *                 ),
+     *                 @OA\Schema(
+     *                     @OA\Property(property="success", type="boolean", example=true),
+     *                     @OA\Property(
+     *                         property="data",
+     *                         type="object",
+     *                         @OA\Property(property="nextPage", type="string", example="password")
+     *                     )
+     *                 )
+     *             }
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=202,
+     *         description="OTP already sent, user must wait",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="warning", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Please wait before requesting another code"),
+     *             @OA\Property(
+     *                 property="errors",
+     *                 type="object",
+     *                 @OA\Property(property="secondsLeft", type="integer", example=42)
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="The mobile field is required."),
+     *             @OA\Property(property="errors", type="object", example={"mobile": {"The mobile field is required."}})
+     *         )
+     *     ),
+     *
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Please try again later")
+     *         )
+     *     )
+     * )
      */
+
     public function login (LoginRequest $request) : JsonResponse {
 
         $mobile = $request->input('mobile');

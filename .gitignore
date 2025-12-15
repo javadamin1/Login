@@ -1,6 +1,4 @@
 
-
-
 *.log
 .DS_Store
 .env
@@ -22,6 +20,7 @@
 /storage/*.key
 /storage/pail
 /storage/mysql
+/storage/redis
 /vendor
 Homestead.json
 Homestead.yaml

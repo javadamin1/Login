@@ -24,9 +24,8 @@ This project includes a Dockerized environment to simplify setup and ensure cons
     - Web Application: http://localhost:8008
     - phpMyAdmin: http://localhost:7272
    > phpMyAdmin credentials:
-   > - Host: `db`
-       >
-    - Username: `root`
+   > - Host: `db` 
+   > - Username: `root`
    > - Password: `root`
 5. Install dependencies and set up Laravel:
    ```bash
@@ -36,6 +35,13 @@ This project includes a Dockerized environment to simplify setup and ensure cons
    $ php artisan migrate
    $ php artisan test 
    ```
+### 📄 API Documentation
+
+You can access the full Swagger documentation for the API at:
+
+[http://localhost:8008/api/documentation](http://localhost:8008/api/documentation)
+
+This includes all endpoints, request/response schemas, and authentication flow.
 
 ### ✅ Implemented Features
 
